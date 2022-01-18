@@ -1,5 +1,6 @@
 import { TodoItem } from './TodoItem.js';
 import { POSITION_TO_INSERT as POSITION, KEY_CODE } from './consts';
+import { sanitize } from './utils';
 
 export class TodoList {
   #container;
@@ -38,7 +39,7 @@ export class TodoList {
     if (!clickedItemElement) return;
 
     const itemToUpdate = this.#todoItems.find(
-      (item) => item.getId() === clickedItemElement.dataset.id
+      (item) => item.id === clickedItemElement.dataset.id
     );
 
     itemToUpdate.isDone = !itemToUpdate.isDone;
@@ -55,6 +56,8 @@ export class TodoList {
     const enterIsPressed = evt.code === KEY_CODE.ENTER;
 
     if (enterIsPressed) {
+      if (!newItemInput.value.length) return;
+      
       this.add(newItemInput.value);
       todoListElement.insertAdjacentHTML(
         POSITION.BEFORE_END,
@@ -63,6 +66,11 @@ export class TodoList {
       newItemInput.value = '';
     }
   };
+
+  #newItemInputHandler = (evt) => {
+    const invalidChar = /[^\w\s,!?()'";:$%&\-\.]/g;
+    evt.target.value = sanitize(evt.target.value, invalidChar);
+  }
 
   add(...items) {
     this.#todoItems = [
@@ -88,7 +96,10 @@ export class TodoList {
       this.#getTodoListMarkup(todoItemsMarkup)
     );
 
+    const newItemInput = this.#container.querySelector('#new-item-input');
+    
     this.#container.addEventListener('click', this.#listItemClickHandler);
     this.#container.addEventListener('keydown', this.#enterKeydownHandler);
+    newItemInput.addEventListener('input', this.#newItemInputHandler);
   }
 }
