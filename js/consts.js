@@ -1,10 +1,10 @@
-export const POSITION_TO_INSERT = {
+export const positionToInsert = {
   BEFORE_BEGIN: 'beforebegin',
   AFTER_BEGIN: 'afterbegin',
   BEFORE_END: 'beforeend',
   AFTER_END: 'afterend',
 }
 
-export const KEY_CODE = {
+export const keyCode = {
   ENTER: 'Enter',
 };

@@ -1,5 +1,5 @@
 import { TodoItem } from './TodoItem.js';
-import { POSITION_TO_INSERT as POSITION, KEY_CODE } from './consts';
+import { positionToInsert as position, keyCode } from './consts';
 import { sanitize } from './utils';
 
 export class TodoList {
@@ -44,7 +44,7 @@ export class TodoList {
 
     itemToUpdate.isDone = !itemToUpdate.isDone;
     clickedItemElement.insertAdjacentHTML(
-      POSITION.AFTER_END,
+      position.AFTER_END,
       itemToUpdate.getMarkup()
     );
     clickedItemElement.remove();
@@ -53,14 +53,14 @@ export class TodoList {
   #enterKeydownHandler = (evt) => {
     const newItemInput = this.#container.querySelector('#new-item-input');
     const todoListElement = this.#container.querySelector('ul');
-    const enterIsPressed = evt.code === KEY_CODE.ENTER;
+    const enterIsPressed = evt.code === keyCode.ENTER;
 
     if (enterIsPressed) {
       if (!newItemInput.value.length) return;
-      
+
       this.add(newItemInput.value);
       todoListElement.insertAdjacentHTML(
-        POSITION.BEFORE_END,
+        position.BEFORE_END,
         this.#todoItems[this.#todoItems.length - 1].getMarkup()
       );
       newItemInput.value = '';
@@ -86,13 +86,14 @@ export class TodoList {
         .map((item) => item.getMarkup())
         .join('');
     }
+    console.log(`this.#todoItems = `, this.#todoItems);
 
     this.#container.insertAdjacentHTML(
-      POSITION.BEFORE_END,
+      position.BEFORE_END,
       this.#getNewItemInputGroupMarkup()
     );
     this.#container.insertAdjacentHTML(
-      POSITION.BEFORE_END,
+      position.BEFORE_END,
       this.#getTodoListMarkup(todoItemsMarkup)
     );
 
