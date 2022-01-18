@@ -22,8 +22,10 @@ export class TodoList {
   }
 
   #listItemClickHandler = (evt) => {
-    const currentLi = evt.target.closest('li');
+    const currentLabel = evt.target.closest('label');
+    if (!currentLabel) return;
 
+    const currentLi = evt.target.closest('li');
     if (!currentLi) return;
 
     const componentToUpdate = this.#todoItemComponents.find(
