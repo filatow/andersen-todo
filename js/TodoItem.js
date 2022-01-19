@@ -52,7 +52,9 @@ export class TodoItem {
       class="list-group-item list-group-item-warning"
       data-id=${this.#id}
     >
-      <label class="${this.#isDone ? 'text-decoration-line-through' : ''}">
+      <label class="${
+        this.#isDone ? 'text-decoration-line-through text-secondary' : ''
+      }">
         <input
           class="form-check-input me-1"
           type="checkbox"
