@@ -158,7 +158,7 @@ export class TodoList {
     return newItemModalMarkup;
   }
 
-  #listItemClickHandler = (evt) => {
+  #listItemCheckboxClickHandler = (evt) => {
     const clickedLabel = evt.target.closest('label');
     if (!clickedLabel) return;
 
@@ -175,6 +175,21 @@ export class TodoList {
       itemToUpdate.getMarkup()
     );
     clickedItemElement.remove();
+  };
+
+  #listItemDeleteButtonClickHandler = (evt) => {
+    const button = evt.target.closest('button.delete-item');
+    if (!button) return;
+
+    const itemElementToDelete = evt.target.closest('li');
+    if (!itemElementToDelete) return;
+
+    const itemToDeleteIndex = this.#todoItems.findIndex(
+      (item) => item.id === itemElementToDelete.dataset.id
+    );
+
+    itemElementToDelete.remove();
+    this.#todoItems.splice(itemToDeleteIndex, 1);
   };
 
   #addNewItem(todoListElement) {
@@ -255,7 +270,8 @@ export class TodoList {
       this.#getNewItemModalMarkup()
     );
 
-    this.#container.addEventListener('click', this.#listItemClickHandler);
+    this.#container.addEventListener('click', this.#listItemCheckboxClickHandler);
+    this.#container.addEventListener('click', this.#listItemDeleteButtonClickHandler);
     this.#container.addEventListener('keydown', this.#enterKeydownHandler);
 
     const newItemInput = this.#container.querySelector('#new-item-input');
