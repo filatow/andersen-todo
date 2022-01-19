@@ -5,8 +5,8 @@ import { sanitize, formatDate } from './utils';
 const newItem = {
   TEXT: 'newItemText',
   CREATION_DATE: 'newItemCreationDate',
-  EXPIRATION_DATE: 'newItemExpirationDate'
-}
+  EXPIRATION_DATE: 'newItemExpirationDate',
+};
 
 export class TodoList {
   #container;
@@ -22,11 +22,18 @@ export class TodoList {
     this.#defaultListItemExpirationDate = new Date(
       Date.parse(this.#defaultListItemCreationDate) + DAY_IN_MS
     );
-    this.#setState(newItem.TEXT, '');
-    this.#setState(newItem.CREATION_DATE, this.#defaultListItemCreationDate);
-    this.#setState(newItem.EXPIRATION_DATE, this.#defaultListItemExpirationDate);
+    this.#setDefaultNewItemValues();
     this.add(items);
     this.render();
+  }
+
+  #setDefaultNewItemValues() {
+    this.#setState(newItem.TEXT, '');
+    this.#setState(newItem.CREATION_DATE, this.#defaultListItemCreationDate);
+    this.#setState(
+      newItem.EXPIRATION_DATE,
+      this.#defaultListItemExpirationDate
+    );
   }
 
   #setState(variable, value) {
@@ -36,9 +43,15 @@ export class TodoList {
     this.#updateBinding(variable);
   }
 
-  #setBinding(stateVariable, bindedElement, property = 'value') {
+  #setBinding(stateVariable, bindedElement, format, property = 'value') {
+    if (typeof property !== 'string') return;
+
     function updateElementValue(newValue) {
-      bindedElement[property] = newValue;
+      if (typeof format === 'function') {
+        bindedElement[property] = format(newValue);
+      } else {
+        bindedElement[property] = newValue;
+      }
     }
 
     if (this.#binding[stateVariable]) {
@@ -53,7 +66,7 @@ export class TodoList {
 
     this.#binding[variable].forEach((updateFunc) => {
       updateFunc(this.#state[variable]);
-    })
+    });
   }
 
   #getTodoListMarkup(todoItemsMarkup = '') {
@@ -67,7 +80,7 @@ export class TodoList {
     <div class="input-group mb-3">
       <input
         type="text" class="form-control"
-        id="new-item-input" placeholder="New task"
+        id="new-item-input" placeholder="Enter task text..."
       >
       <button
         class="btn btn-warning fs-5"
@@ -99,7 +112,7 @@ export class TodoList {
                 type="text"
                 class="form-control"
                 id="new-item-input-modal"
-                placeholder="New task"
+                placeholder="Enter text..."
               />
             </div>
             <div class="row">
@@ -131,7 +144,10 @@ export class TodoList {
             >
               Close
             </button>
-            <button type="button" class="btn btn-primary">
+            <button
+              type="button" class="btn btn-primary"
+              id="save-new-item-button-modal"
+            >
               Save
             </button>
           </div>
@@ -161,20 +177,26 @@ export class TodoList {
     clickedItemElement.remove();
   };
 
+  #addNewItem(todoListElement) {
+    this.add(
+      this.#state[newItem.TEXT],
+      this.#state[newItem.CREATION_DATE],
+      this.#state[newItem.EXPIRATION_DATE]
+    );
+    todoListElement.insertAdjacentHTML(
+      position.BEFORE_END,
+      this.#todoItems[this.#todoItems.length - 1].getMarkup()
+    );
+    this.#setDefaultNewItemValues();
+  }
+
   #enterKeydownHandler = (evt) => {
-    const newItemInput = this.#container.querySelector('#new-item-input');
     const todoListElement = this.#container.querySelector('ul');
     const enterIsPressed = evt.code === keyCode.ENTER;
 
     if (enterIsPressed) {
-      if (!newItemInput.value.length) return;
-
-      this.add(newItemInput.value);
-      todoListElement.insertAdjacentHTML(
-        position.BEFORE_END,
-        this.#todoItems[this.#todoItems.length - 1].getMarkup()
-      );
-      newItemInput.value = '';
+      if (!this.#state[newItem.TEXT]) return;
+      this.#addNewItem(todoListElement);
     }
   };
 
@@ -183,6 +205,19 @@ export class TodoList {
     evt.target.value = sanitize(evt.target.value, invalidChar);
     this.#setState(newItem.TEXT, evt.target.value);
   };
+
+  #creationDateInputModalChangeHandler = (evt) => {
+    this.#setState(newItem.CREATION_DATE, evt.target.value);
+  };
+
+  #expirationDateInputModalChangeHandler = (evt) => {
+    this.#setState(newItem.EXPIRATION_DATE, evt.target.value);
+  };
+
+  #saveNewItemButtonModalClickHandler = () => {
+    const todoListElement = this.#container.querySelector('ul');
+    this.#addNewItem(todoListElement);
+  }
 
   add(
     data,
@@ -231,5 +266,35 @@ export class TodoList {
       input.addEventListener('input', this.#newItemInputHandler);
       this.#setBinding(newItem.TEXT, input);
     });
+
+    const creationDateInputModal = this.#container.querySelector(
+      '#creation-date-input-modal'
+    );
+    creationDateInputModal.addEventListener(
+      'change',
+      this.#creationDateInputModalChangeHandler
+    );
+    this.#setBinding(newItem.CREATION_DATE, creationDateInputModal, formatDate);
+
+    const expirationDateInputModal = this.#container.querySelector(
+      '#expiration-date-input-modal'
+    );
+    expirationDateInputModal.addEventListener(
+      'change',
+      this.#expirationDateInputModalChangeHandler
+    );
+    this.#setBinding(
+      newItem.EXPIRATION_DATE,
+      expirationDateInputModal,
+      formatDate
+    );
+
+    const saveNewItemButtonModal = this.#container.querySelector(
+      '#save-new-item-button-modal'
+    );
+    saveNewItemButtonModal.addEventListener(
+      'click',
+      this.#saveNewItemButtonModalClickHandler
+    );
   }
 }
