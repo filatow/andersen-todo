@@ -1,15 +1,59 @@
-import { TodoItem } from './TodoItem.js';
-import { positionToInsert as position, keyCode } from './consts';
-import { sanitize } from './utils';
+import { TodoItem } from './TodoItem';
+import { positionToInsert as position, keyCode, DAY_IN_MS } from './consts';
+import { sanitize, formatDate } from './utils';
+
+const newItem = {
+  TEXT: 'newItemText',
+  CREATION_DATE: 'newItemCreationDate',
+  EXPIRATION_DATE: 'newItemExpirationDate'
+}
 
 export class TodoList {
   #container;
   #todoItems = [];
+  #defaultListItemCreationDate;
+  #defaultListItemExpirationDate;
+  #state = {};
+  #binding = {};
 
   constructor(container, items = []) {
     this.#container = container;
-    this.add(...items);
+    this.#defaultListItemCreationDate = new Date();
+    this.#defaultListItemExpirationDate = new Date(
+      Date.parse(this.#defaultListItemCreationDate) + DAY_IN_MS
+    );
+    this.#setState(newItem.TEXT, '');
+    this.#setState(newItem.CREATION_DATE, this.#defaultListItemCreationDate);
+    this.#setState(newItem.EXPIRATION_DATE, this.#defaultListItemExpirationDate);
+    this.add(items);
     this.render();
+  }
+
+  #setState(variable, value) {
+    if (typeof variable !== 'string') return;
+    this.#state[variable] = value;
+
+    this.#updateBinding(variable);
+  }
+
+  #setBinding(stateVariable, bindedElement, property = 'value') {
+    function updateElementValue(newValue) {
+      bindedElement[property] = newValue;
+    }
+
+    if (this.#binding[stateVariable]) {
+      this.#binding[stateVariable].push(updateElementValue);
+    } else {
+      this.#binding[stateVariable] = [updateElementValue];
+    }
+  }
+
+  #updateBinding(variable) {
+    if (!this.#binding[variable]) return;
+
+    this.#binding[variable].forEach((updateFunc) => {
+      updateFunc(this.#state[variable]);
+    })
   }
 
   #getTodoListMarkup(todoItemsMarkup = '') {
@@ -25,10 +69,77 @@ export class TodoList {
         type="text" class="form-control"
         id="new-item-input" placeholder="New task"
       >
-      <button class="btn btn-warning fs-5" type="button">+</button>
+      <button
+        class="btn btn-warning fs-5"
+        type="button"
+        data-bs-toggle="modal"
+        data-bs-target="#new-item-modal"
+      >+</button>
     </div>`;
-    
+
     return newItemInputGroupMarkup;
+  }
+
+  #getNewItemModalMarkup() {
+    const newItemModalMarkup = `
+    <div class="modal fade" id="new-item-modal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">New task</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="input-group mb-3">
+              <input
+                type="text"
+                class="form-control"
+                id="new-item-input-modal"
+                placeholder="New task"
+              />
+            </div>
+            <div class="row">
+              <div class="col">
+                <label for="creation-date-input-modal" class="form-label">Creation date</label>
+                <input
+                  type="date"
+                  class="form-control"
+                  id="creation-date-input-modal"
+                  value="${formatDate(this.#defaultListItemCreationDate)}"
+                />
+              </div>
+              <div class="col">
+                <label for="expiration-date-input-modal" class="form-label">Expiration date</label>
+                <input
+                  type="date"
+                  class="form-control"
+                  id="expiration-date-input-modal"
+                  value="${formatDate(this.#defaultListItemExpirationDate)}"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+            <button type="button" class="btn btn-primary">
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    return newItemModalMarkup;
   }
 
   #listItemClickHandler = (evt) => {
@@ -68,15 +179,24 @@ export class TodoList {
   };
 
   #newItemInputHandler = (evt) => {
-    const invalidChar = /[^\w\s,!?()'";:$%&\-\.]/g;
+    const invalidChar = /[^\w\s,!?()'";:#%$&\-\.]/g;
     evt.target.value = sanitize(evt.target.value, invalidChar);
-  }
+    this.#setState(newItem.TEXT, evt.target.value);
+  };
 
-  add(...items) {
-    this.#todoItems = [
-      ...this.#todoItems,
-      ...items.map((item) => new TodoItem(item)),
-    ];
+  add(
+    data,
+    creationDate = this.#defaultListItemCreationDate,
+    expirationDate = this.#defaultListItemExpirationDate
+  ) {
+    if (Array.isArray(data)) {
+      this.#todoItems = [
+        ...this.#todoItems,
+        ...data.map((item) => new TodoItem(item, creationDate, expirationDate)),
+      ];
+    } else {
+      this.#todoItems.push(new TodoItem(data, creationDate, expirationDate));
+    }
   }
 
   render() {
@@ -86,7 +206,6 @@ export class TodoList {
         .map((item) => item.getMarkup())
         .join('');
     }
-    console.log(`this.#todoItems = `, this.#todoItems);
 
     this.#container.insertAdjacentHTML(
       position.BEFORE_END,
@@ -96,11 +215,21 @@ export class TodoList {
       position.BEFORE_END,
       this.#getTodoListMarkup(todoItemsMarkup)
     );
+    this.#container.insertAdjacentHTML(
+      position.BEFORE_END,
+      this.#getNewItemModalMarkup()
+    );
 
-    const newItemInput = this.#container.querySelector('#new-item-input');
-    
     this.#container.addEventListener('click', this.#listItemClickHandler);
     this.#container.addEventListener('keydown', this.#enterKeydownHandler);
-    newItemInput.addEventListener('input', this.#newItemInputHandler);
+
+    const newItemInput = this.#container.querySelector('#new-item-input');
+    const newItemInputModal = this.#container.querySelector(
+      '#new-item-input-modal'
+    );
+    [newItemInput, newItemInputModal].forEach((input) => {
+      input.addEventListener('input', this.#newItemInputHandler);
+      this.#setBinding(newItem.TEXT, input);
+    });
   }
 }

@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid';
+import { DAY_IN_MS } from './consts';
 
 const CHARS_IN_ID = 8;
-const MS_IN_DAY = 86_400_000;
 
 export class TodoItem {
   #id;
@@ -15,13 +15,13 @@ export class TodoItem {
     this.#text = text;
     this.#creationDate = creationDate || new Date();
     this.#expirationDate =
-      expirationDate || new Date( Date.parse(this.#creationDate) + MS_IN_DAY );
+      expirationDate || new Date(Date.parse(this.#creationDate) + DAY_IN_MS);
   }
 
   get id() {
     return this.#id;
   }
-  
+
   get isDone() {
     return this.#isDone;
   }
