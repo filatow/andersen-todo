@@ -1,6 +1,7 @@
 import { TodoItem } from './TodoItem';
 import { positionToInsert as position, keyCode, DAY_IN_MS } from './consts';
 import { sanitize, formatDate } from './utils';
+import { Abstract } from './Abstract';
 
 const newItem = {
   TEXT: 'newItemText',
@@ -8,154 +9,119 @@ const newItem = {
   EXPIRATION_DATE: 'newItemExpirationDate',
 };
 
-export class TodoList {
+const getNewItemInputGroupMarkup = () => {
+  const newItemInputGroupMarkup = `
+  <div class="input-group mb-3">
+    <input
+      type="text" class="form-control"
+      id="new-item-input" placeholder="Enter task text..."
+    >
+    <button
+      class="btn btn-warning fs-5"
+      type="button"
+      data-bs-toggle="modal"
+      data-bs-target="#new-item-modal"
+    >+</button>
+  </div>`;
+
+  return newItemInputGroupMarkup;
+};
+
+const getTodoListMarkup = (todoItemsMarkup = '') => {
+  const todoListMarkup = `<ul class="list-group">${todoItemsMarkup}</ul>`;
+
+  return todoListMarkup;
+};
+
+const getNewItemModalMarkup = (
+  listItemCreationDate,
+  listItemExpirationDate
+) => {
+  const newItemModalMarkup = `
+  <div class="modal fade" id="new-item-modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">New task</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <div class="input-group mb-3">
+            <input
+              type="text"
+              class="form-control"
+              id="new-item-input-modal"
+              placeholder="Enter text..."
+            />
+          </div>
+          <div class="row">
+            <div class="col">
+              <label for="creation-date-input-modal" class="form-label">Creation date</label>
+              <input
+                type="date"
+                class="form-control"
+                id="creation-date-input-modal"
+                value="${formatDate(listItemCreationDate)}"
+              />
+            </div>
+            <div class="col">
+              <label for="expiration-date-input-modal" class="form-label">Expiration date</label>
+              <input
+                type="date"
+                class="form-control"
+                id="expiration-date-input-modal"
+                value="${formatDate(listItemExpirationDate)}"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            data-bs-dismiss="modal"
+          >
+            Close
+          </button>
+          <button
+            type="button" class="btn btn-primary"
+            id="save-new-item-button-modal"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  return newItemModalMarkup;
+};
+
+export class TodoList extends Abstract {
   #container;
   #todoItems = [];
   #defaultListItemCreationDate;
   #defaultListItemExpirationDate;
-  #state = {};
-  #binding = {};
 
   constructor(container, items = []) {
+    super();
     this.#container = container;
     this.#defaultListItemCreationDate = new Date();
     this.#defaultListItemExpirationDate = new Date(
       Date.parse(this.#defaultListItemCreationDate) + DAY_IN_MS
     );
     this.#setDefaultNewItemValues();
-    this.add(items);
-    this.render();
+    this.#addItemToList(items);
   }
 
   #setDefaultNewItemValues() {
-    this.#setState(newItem.TEXT, '');
-    this.#setState(newItem.CREATION_DATE, this.#defaultListItemCreationDate);
-    this.#setState(
-      newItem.EXPIRATION_DATE,
-      this.#defaultListItemExpirationDate
-    );
-  }
-
-  #setState(variable, value) {
-    if (typeof variable !== 'string') return;
-    this.#state[variable] = value;
-
-    this.#updateBinding(variable);
-  }
-
-  #setBinding(stateVariable, bindedElement, format, property = 'value') {
-    if (typeof property !== 'string') return;
-
-    function updateElementValue(newValue) {
-      if (typeof format === 'function') {
-        bindedElement[property] = format(newValue);
-      } else {
-        bindedElement[property] = newValue;
-      }
-    }
-
-    if (this.#binding[stateVariable]) {
-      this.#binding[stateVariable].push(updateElementValue);
-    } else {
-      this.#binding[stateVariable] = [updateElementValue];
-    }
-  }
-
-  #updateBinding(variable) {
-    if (!this.#binding[variable]) return;
-
-    this.#binding[variable].forEach((updateFunc) => {
-      updateFunc(this.#state[variable]);
-    });
-  }
-
-  #getTodoListMarkup(todoItemsMarkup = '') {
-    const todoListMarkup = `<ul class="list-group">${todoItemsMarkup}</ul>`;
-
-    return todoListMarkup;
-  }
-
-  #getNewItemInputGroupMarkup() {
-    const newItemInputGroupMarkup = `
-    <div class="input-group mb-3">
-      <input
-        type="text" class="form-control"
-        id="new-item-input" placeholder="Enter task text..."
-      >
-      <button
-        class="btn btn-warning fs-5"
-        type="button"
-        data-bs-toggle="modal"
-        data-bs-target="#new-item-modal"
-      >+</button>
-    </div>`;
-
-    return newItemInputGroupMarkup;
-  }
-
-  #getNewItemModalMarkup() {
-    const newItemModalMarkup = `
-    <div class="modal fade" id="new-item-modal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">New task</h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-            ></button>
-          </div>
-          <div class="modal-body">
-            <div class="input-group mb-3">
-              <input
-                type="text"
-                class="form-control"
-                id="new-item-input-modal"
-                placeholder="Enter text..."
-              />
-            </div>
-            <div class="row">
-              <div class="col">
-                <label for="creation-date-input-modal" class="form-label">Creation date</label>
-                <input
-                  type="date"
-                  class="form-control"
-                  id="creation-date-input-modal"
-                  value="${formatDate(this.#defaultListItemCreationDate)}"
-                />
-              </div>
-              <div class="col">
-                <label for="expiration-date-input-modal" class="form-label">Expiration date</label>
-                <input
-                  type="date"
-                  class="form-control"
-                  id="expiration-date-input-modal"
-                  value="${formatDate(this.#defaultListItemExpirationDate)}"
-                />
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-outline-secondary"
-              data-bs-dismiss="modal"
-            >
-              Close
-            </button>
-            <button
-              type="button" class="btn btn-primary"
-              id="save-new-item-button-modal"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>`;
-
-    return newItemModalMarkup;
+    this.setState(newItem.TEXT, '');
+    this.setState(newItem.CREATION_DATE, this.#defaultListItemCreationDate);
+    this.setState(newItem.EXPIRATION_DATE, this.#defaultListItemExpirationDate);
   }
 
   #listItemCheckboxClickHandler = (evt) => {
@@ -192,49 +158,34 @@ export class TodoList {
     this.#todoItems.splice(itemToDeleteIndex, 1);
   };
 
-  #addNewItem(todoListElement) {
-    this.add(
-      this.#state[newItem.TEXT],
-      this.#state[newItem.CREATION_DATE],
-      this.#state[newItem.EXPIRATION_DATE]
-    );
-    todoListElement.insertAdjacentHTML(
-      position.BEFORE_END,
-      this.#todoItems[this.#todoItems.length - 1].getMarkup()
-    );
-    this.#setDefaultNewItemValues();
-  }
-
   #enterKeydownHandler = (evt) => {
-    const todoListElement = this.#container.querySelector('ul');
     const enterIsPressed = evt.code === keyCode.ENTER;
 
     if (enterIsPressed) {
-      if (!this.#state[newItem.TEXT]) return;
-      this.#addNewItem(todoListElement);
+      if (!this.getState(newItem.TEXT)) return;
+      this.addItem();
     }
   };
 
   #newItemInputHandler = (evt) => {
     const invalidChar = /[^\w\s,!?()'";:#%$&\-\.]/g;
     evt.target.value = sanitize(evt.target.value, invalidChar);
-    this.#setState(newItem.TEXT, evt.target.value);
+    this.setState(newItem.TEXT, evt.target.value);
   };
 
   #creationDateInputModalChangeHandler = (evt) => {
-    this.#setState(newItem.CREATION_DATE, evt.target.value);
+    this.setState(newItem.CREATION_DATE, evt.target.value);
   };
 
   #expirationDateInputModalChangeHandler = (evt) => {
-    this.#setState(newItem.EXPIRATION_DATE, evt.target.value);
+    this.setState(newItem.EXPIRATION_DATE, evt.target.value);
   };
 
   #saveNewItemButtonModalClickHandler = () => {
-    const todoListElement = this.#container.querySelector('ul');
-    this.#addNewItem(todoListElement);
-  }
+    this.addItem();
+  };
 
-  add(
+  #addItemToList(
     data,
     creationDate = this.#defaultListItemCreationDate,
     expirationDate = this.#defaultListItemExpirationDate
@@ -249,29 +200,55 @@ export class TodoList {
     }
   }
 
+  addItem(
+    text = this.getState(newItem.TEXT),
+    creationDate = this.getState(newItem.CREATION_DATE),
+    expirationDate = this.getState(newItem.EXPIRATION_DATE)
+  ) {
+    const todoListElement = this.#container.querySelector('ul');
+    const insertItemMarkup = () => {
+      todoListElement.insertAdjacentHTML(
+        position.BEFORE_END,
+        this.#todoItems[this.#todoItems.length - 1].getMarkup()
+      );
+    };
+
+    if (!text || typeof text !== 'string') return;
+
+    this.#addItemToList(text, creationDate, expirationDate);
+    insertItemMarkup();
+    this.#setDefaultNewItemValues();
+  }
+
   render() {
-    let todoItemsMarkup = '';
-    if (this.#todoItems.length) {
-      todoItemsMarkup = this.#todoItems
-        .map((item) => item.getMarkup())
-        .join('');
-    }
+    const todoItemsMarkup = this.#todoItems
+      .map((item) => item.getMarkup())
+      .join('');
 
     this.#container.insertAdjacentHTML(
       position.BEFORE_END,
-      this.#getNewItemInputGroupMarkup()
+      getNewItemInputGroupMarkup()
     );
     this.#container.insertAdjacentHTML(
       position.BEFORE_END,
-      this.#getTodoListMarkup(todoItemsMarkup)
+      getTodoListMarkup(todoItemsMarkup)
     );
     this.#container.insertAdjacentHTML(
       position.BEFORE_END,
-      this.#getNewItemModalMarkup()
+      getNewItemModalMarkup(
+        this.#defaultListItemCreationDate,
+        this.#defaultListItemExpirationDate
+      )
     );
 
-    this.#container.addEventListener('click', this.#listItemCheckboxClickHandler);
-    this.#container.addEventListener('click', this.#listItemDeleteButtonClickHandler);
+    this.#container.addEventListener(
+      'click',
+      this.#listItemCheckboxClickHandler
+    );
+    this.#container.addEventListener(
+      'click',
+      this.#listItemDeleteButtonClickHandler
+    );
     this.#container.addEventListener('keydown', this.#enterKeydownHandler);
 
     const newItemInput = this.#container.querySelector('#new-item-input');
@@ -280,7 +257,7 @@ export class TodoList {
     );
     [newItemInput, newItemInputModal].forEach((input) => {
       input.addEventListener('input', this.#newItemInputHandler);
-      this.#setBinding(newItem.TEXT, input);
+      this.setBinding(newItem.TEXT, input);
     });
 
     const creationDateInputModal = this.#container.querySelector(
@@ -290,7 +267,7 @@ export class TodoList {
       'change',
       this.#creationDateInputModalChangeHandler
     );
-    this.#setBinding(newItem.CREATION_DATE, creationDateInputModal, formatDate);
+    this.setBinding(newItem.CREATION_DATE, creationDateInputModal, formatDate);
 
     const expirationDateInputModal = this.#container.querySelector(
       '#expiration-date-input-modal'
@@ -299,7 +276,7 @@ export class TodoList {
       'change',
       this.#expirationDateInputModalChangeHandler
     );
-    this.#setBinding(
+    this.setBinding(
       newItem.EXPIRATION_DATE,
       expirationDateInputModal,
       formatDate

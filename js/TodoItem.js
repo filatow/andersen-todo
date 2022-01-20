@@ -1,9 +1,10 @@
 import { nanoid } from 'nanoid';
+import { Abstract } from './Abstract';
 import { DAY_IN_MS } from './consts';
 
 const CHARS_IN_ID = 8;
 
-export class TodoItem {
+export class TodoItem extends Abstract {
   #id;
   #text;
   #isDone = false;
@@ -11,6 +12,7 @@ export class TodoItem {
   #expirationDate;
 
   constructor(text, creationDate, expirationDate) {
+    super();
     this.#id = nanoid(CHARS_IN_ID);
     this.#text = text;
     this.#creationDate = creationDate || new Date();
@@ -49,7 +51,7 @@ export class TodoItem {
   getMarkup() {
     return `
     <li
-      class="list-group-item list-group-item-warning d-flex justify-content-between"
+      class="list-group-item list-group-item-warning d-flex justify-content-between align-items-center"
       data-id=${this.#id}
     >
       <label class="${
