@@ -33,10 +33,7 @@ const getTodoListMarkup = (todoItemsMarkup = '') => {
   return todoListMarkup;
 };
 
-const getNewItemModalMarkup = (
-  listItemCreationDate,
-  listItemExpirationDate
-) => {
+const getNewItemCreateModalMarkup = (itemCreationDate, itemExpirationDate) => {
   const newItemModalMarkup = `
   <div class="modal fade" id="new-item-modal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -65,7 +62,7 @@ const getNewItemModalMarkup = (
                 type="date"
                 class="form-control"
                 id="creation-date-input-modal"
-                value="${formatDate(listItemCreationDate)}"
+                value="${formatDate(itemCreationDate)}"
               />
             </div>
             <div class="col">
@@ -74,7 +71,7 @@ const getNewItemModalMarkup = (
                 type="date"
                 class="form-control"
                 id="expiration-date-input-modal"
-                value="${formatDate(listItemExpirationDate)}"
+                value="${formatDate(itemExpirationDate)}"
               />
             </div>
           </div>
@@ -85,11 +82,76 @@ const getNewItemModalMarkup = (
             class="btn btn-outline-secondary"
             data-bs-dismiss="modal"
           >
-            Close
+            Cancel
           </button>
           <button
             type="button" class="btn btn-primary"
             id="save-new-item-button-modal"
+          >
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  return newItemModalMarkup;
+};
+
+const getEditItemModalMarkup = (itemCreationDate, itemExpirationDate) => {
+  const editItemModalMarkup = `
+  <div class="modal fade" id="edit-item-modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit task</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <div class="input-group mb-3">
+            <input
+              type="text"
+              class="form-control"
+              id="edit-item-input-modal"
+              placeholder="Enter text..."
+            />
+          </div>
+          <div class="row">
+            <div class="col">
+              <label for="edit-creation-date-input-modal" class="form-label">Creation date</label>
+              <input
+                type="date"
+                class="form-control"
+                id="edit-creation-date-input-modal"
+                value="${formatDate(itemCreationDate)}"
+              />
+            </div>
+            <div class="col">
+              <label for="edit-expiration-date-input-modal" class="form-label">Expiration date</label>
+              <input
+                type="date"
+                class="form-control"
+                id="edit-expiration-date-input-modal"
+                value="${formatDate(itemExpirationDate)}"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button
+            type="button" class="btn btn-primary"
+            id="save-edited-item-button-modal"
           >
             Save
           </button>
@@ -98,7 +160,7 @@ const getNewItemModalMarkup = (
     </div>
   </div>`;
 
-  return newItemModalMarkup;
+  return editItemModalMarkup;
 };
 
 export class TodoList extends Abstract {
@@ -158,6 +220,34 @@ export class TodoList extends Abstract {
     this.#todoItems.splice(itemToDeleteIndex, 1);
   };
 
+  #listItemEditButtonClickHandler = (evt) => {
+    const button = evt.target.closest('button.edit-item');
+    if (!button) return;
+
+    const itemElementToEdit = evt.target.closest('li');
+    if (!itemElementToEdit) return;
+
+    const itemToEditIndex = this.#todoItems.findIndex(
+      (item) => item.id === itemElementToEdit.dataset.id
+    );
+
+    this.setState('itemToEdit', this.#todoItems[itemToEditIndex]);
+    const itemToEdit = this.getState('itemToEdit');
+    const editItemInputModal = this.#container.querySelector(
+      '#edit-item-input-modal'
+    );
+    const editCreationDateInputModal = this.#container.querySelector(
+      '#edit-creation-date-input-modal'
+    );
+    const editExpirationDateInputModal = this.#container.querySelector(
+      '#edit-expiration-date-input-modal'
+    );
+
+    editItemInputModal.value = itemToEdit.text;
+    editCreationDateInputModal.value = formatDate(itemToEdit.creationDate);
+    editExpirationDateInputModal.value = formatDate(itemToEdit.expirationDate);
+  };
+
   #enterKeydownHandler = (evt) => {
     const enterIsPressed = evt.code === keyCode.ENTER;
 
@@ -184,6 +274,32 @@ export class TodoList extends Abstract {
   #saveNewItemButtonModalClickHandler = () => {
     this.addItem();
   };
+
+  #saveEditedItemButtonModalClickHandler = () => {
+    const itemToUpdate = this.getState('itemToEdit');
+    const editItemInputModal = this.#container.querySelector(
+      '#edit-item-input-modal'
+    );
+    const editCreationDateInputModal = this.#container.querySelector(
+      '#edit-creation-date-input-modal'
+    );
+    const editExpirationDateInputModal = this.#container.querySelector(
+      '#edit-expiration-date-input-modal'
+    );
+
+    itemToUpdate.text = editItemInputModal.value;
+    itemToUpdate.creationDate = editCreationDateInputModal.value;
+    itemToUpdate.expirationDate = editExpirationDateInputModal.value;
+
+    const elementToReplace = this.#container.querySelector(
+      `li.list-group-item[data-id=${itemToUpdate.id}]`
+    );
+    elementToReplace.insertAdjacentHTML(
+      position.AFTER_END,
+      itemToUpdate.getMarkup()
+    );
+    elementToReplace.remove();
+  }
 
   #addItemToList(
     data,
@@ -235,7 +351,14 @@ export class TodoList extends Abstract {
     );
     this.#container.insertAdjacentHTML(
       position.BEFORE_END,
-      getNewItemModalMarkup(
+      getNewItemCreateModalMarkup(
+        this.#defaultListItemCreationDate,
+        this.#defaultListItemExpirationDate
+      )
+    );
+    this.#container.insertAdjacentHTML(
+      position.BEFORE_END,
+      getEditItemModalMarkup(
         this.#defaultListItemCreationDate,
         this.#defaultListItemExpirationDate
       )
@@ -248,6 +371,10 @@ export class TodoList extends Abstract {
     this.#container.addEventListener(
       'click',
       this.#listItemDeleteButtonClickHandler
+    );
+    this.#container.addEventListener(
+      'click',
+      this.#listItemEditButtonClickHandler
     );
     this.#container.addEventListener('keydown', this.#enterKeydownHandler);
 
@@ -288,6 +415,14 @@ export class TodoList extends Abstract {
     saveNewItemButtonModal.addEventListener(
       'click',
       this.#saveNewItemButtonModalClickHandler
+    );
+
+    const saveEditedItemButtonModal = this.#container.querySelector(
+      '#save-edited-item-button-modal'
+    );
+    saveEditedItemButtonModal.addEventListener(
+      'click',
+      this.#saveEditedItemButtonModalClickHandler
     );
   }
 }

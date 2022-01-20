@@ -7,6 +7,10 @@ export class Abstract {
     }
   }
   
+  get state() {
+    return this.#state;
+  }
+  
   getState(variable) {
     return this.#state[variable]
   }
