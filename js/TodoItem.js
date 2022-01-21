@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import { Abstract } from './Abstract';
 import { DAY_IN_MS } from './consts';
+import { formatDate } from './utils';
 
 const CHARS_IN_ID = 8;
 
@@ -15,9 +16,10 @@ export class TodoItem extends Abstract {
     super();
     this.#id = nanoid(CHARS_IN_ID);
     this.#text = text;
-    this.#creationDate = creationDate || new Date();
+    this.#creationDate = creationDate || formatDate(new Date());
     this.#expirationDate =
-      expirationDate || new Date(Date.parse(this.#creationDate) + DAY_IN_MS);
+      expirationDate ||
+      formatDate(new Date(Date.parse(this.#creationDate) + DAY_IN_MS));
   }
 
   get text() {
@@ -63,7 +65,9 @@ export class TodoItem extends Abstract {
       data-id=${this.#id}
     >
       <label ${
-        this.#isDone ? 'class="text-decoration-line-through text-secondary"' : ''
+        this.#isDone
+          ? 'class="text-decoration-line-through text-secondary"'
+          : ''
       }>
         <input
           class="form-check-input me-1"

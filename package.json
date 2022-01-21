@@ -5,7 +5,8 @@
   "main": "index.js",
   "dependencies": {
     "dayjs": "^1.10.7",
-    "nanoid": "^3.2.0"
+    "nanoid": "^3.2.0",
+    "utils": "^0.3.1"
   },
   "devDependencies": {},
   "scripts": {

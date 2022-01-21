@@ -1,29 +1,32 @@
 import { TodoItem } from './TodoItem';
-import { positionToInsert as position, keyCode, DAY_IN_MS } from './consts';
+import {
+  positionToInsert as position,
+  keyCode,
+  DAY_IN_MS,
+  newItem,
+  filterByStatus,
+  sortingType,
+} from './consts';
 import { sanitize, formatDate } from './utils';
 import { Abstract } from './Abstract';
-
-const newItem = {
-  TEXT: 'newItemText',
-  CREATION_DATE: 'newItemCreationDate',
-  EXPIRATION_DATE: 'newItemExpirationDate',
-};
-
-const filterByStatus = {
-  ALL: 'all',
-  ACTIVE: 'active',
-  COMPLETED: 'completed',
-};
 
 const getNewItemInputGroupMarkup = () => {
   const newItemInputGroupMarkup = `
   <div class="input-group mb-3">
+    <button
+      class="btn btn-outline-light fs-5 toggle-sort-and-filter-panel-button"
+      type="button"
+    >
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-funnel-fill" viewBox="0 0 16 16">
+      <path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5v-2z"/>
+    </svg>
+    </button>
     <input
       type="text" class="form-control"
       id="new-item-input" placeholder="Enter task text..."
     >
     <button
-      class="btn btn-warning fs-5"
+      class="btn btn-warning fs-4"
       type="button"
       data-bs-toggle="modal"
       data-bs-target="#new-item-modal"
@@ -31,6 +34,39 @@ const getNewItemInputGroupMarkup = () => {
   </div>`;
 
   return newItemInputGroupMarkup;
+};
+
+const getSortAndFilterPanelMarkup = () => {
+  const sortAndFilterPanelMarkup = `
+  <div class="d-none" id="sort-and-filter-panel">
+    <div class="row row-cols-lg-auto g-3 align-items-center text-white mb-3">
+      <div class="col">
+        Sort by
+      </div>
+      <div class="col">
+        <select class="form-select" id="sorting-type-select">
+          <option value="unsorted" selected>Choose...</option>
+          <option value="by-text">Text</option>
+          <option value="by-creation-date">Creation date</option>
+          <option value="by-expiration-date">Expiration date</option>
+        </select>
+      </div>
+      <div class="col">
+        <div class="form-check">
+          <label class="form-check-label" for="reverse-sorting-order">
+            <input
+            class="form-check-input"
+            type="checkbox"
+            id="reverse-sorting-order"
+          />
+            reverse order
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  return sortAndFilterPanelMarkup;
 };
 
 const getTodoListMarkup = (todoItemsMarkup = '') => {
@@ -68,7 +104,7 @@ const getNewItemCreateModalMarkup = (itemCreationDate, itemExpirationDate) => {
                 type="date"
                 class="form-control"
                 id="creation-date-input-modal"
-                value="${formatDate(itemCreationDate)}"
+                value="${itemCreationDate}"
               />
             </div>
             <div class="col">
@@ -77,7 +113,7 @@ const getNewItemCreateModalMarkup = (itemCreationDate, itemExpirationDate) => {
                 type="date"
                 class="form-control"
                 id="expiration-date-input-modal"
-                value="${formatDate(itemExpirationDate)}"
+                value="${itemExpirationDate}"
               />
             </div>
           </div>
@@ -92,7 +128,7 @@ const getNewItemCreateModalMarkup = (itemCreationDate, itemExpirationDate) => {
           </button>
           <button
             type="button" class="btn btn-primary"
-            id="save-new-item-button-modal"
+            id="create-new-item-button-modal"
           >
             Create
           </button>
@@ -133,7 +169,7 @@ const getEditItemModalMarkup = (itemCreationDate, itemExpirationDate) => {
                 type="date"
                 class="form-control"
                 id="edit-creation-date-input-modal"
-                value="${formatDate(itemCreationDate)}"
+                value="${itemCreationDate}"
               />
             </div>
             <div class="col">
@@ -142,7 +178,7 @@ const getEditItemModalMarkup = (itemCreationDate, itemExpirationDate) => {
                 type="date"
                 class="form-control"
                 id="edit-expiration-date-input-modal"
-                value="${formatDate(itemExpirationDate)}"
+                value="${itemExpirationDate}"
               />
             </div>
           </div>
@@ -200,7 +236,7 @@ const getFilterBarMarkup = () => {
         >
           Completed
         </button>
-        <button type="button" class="btn btn-info clear-completed-button">
+        <button type="button" class="btn btn-outline-warning clear-completed-button">
           Clear completed
         </button>
       </div>
@@ -215,13 +251,17 @@ export class TodoList extends Abstract {
   #todoItems = [];
   #defaultListItemCreationDate;
   #defaultListItemExpirationDate;
+  #viewSetting = {
+    status: filterByStatus.ALL,
+    sorting: sortingType.UNSORTED,
+  };
 
   constructor(container, items = []) {
     super();
     this.#container = container;
-    this.#defaultListItemCreationDate = new Date();
-    this.#defaultListItemExpirationDate = new Date(
-      Date.parse(this.#defaultListItemCreationDate) + DAY_IN_MS
+    this.#defaultListItemCreationDate = formatDate(new Date());
+    this.#defaultListItemExpirationDate = formatDate(
+      new Date(Date.parse(this.#defaultListItemCreationDate) + DAY_IN_MS)
     );
     this.#setDefaultNewItemValues();
     this.setState('activeTodoItemsCount', 0);
@@ -251,11 +291,8 @@ export class TodoList extends Abstract {
     } else {
       this.#activeTodoItemsCountIncrement();
     }
-    clickedItemElement.insertAdjacentHTML(
-      position.AFTER_END,
-      itemToUpdate.getMarkup()
-    );
-    clickedItemElement.remove();
+
+    this.#updateListOfItems();
   };
 
   #listItemDeleteButtonClickHandler = (evt) => {
@@ -300,8 +337,8 @@ export class TodoList extends Abstract {
     );
 
     editItemInputModal.value = itemToEdit.text;
-    editCreationDateInputModal.value = formatDate(itemToEdit.creationDate);
-    editExpirationDateInputModal.value = formatDate(itemToEdit.expirationDate);
+    editCreationDateInputModal.value = itemToEdit.creationDate;
+    editExpirationDateInputModal.value = itemToEdit.expirationDate;
   };
 
   #enterKeydownHandler = (evt) => {
@@ -348,7 +385,7 @@ export class TodoList extends Abstract {
     itemToUpdate.expirationDate = editExpirationDateInputModal.value;
 
     const elementToReplace = this.#container.querySelector(
-      `li.list-group-item[data-id=${itemToUpdate.id}]`
+      `[data-id=${itemToUpdate.id}]`
     );
     elementToReplace.insertAdjacentHTML(
       position.AFTER_END,
@@ -371,22 +408,24 @@ export class TodoList extends Abstract {
     );
   }
 
-  #addToList(
-    data,
-    creationDate = this.#defaultListItemCreationDate,
-    expirationDate = this.#defaultListItemExpirationDate
-  ) {
+  #addToList(data) {
     if (Array.isArray(data)) {
       this.#todoItems = [
         ...this.#todoItems,
         ...data.map((item) => {
           this.#activeTodoItemsCountIncrement();
-          return new TodoItem(item, creationDate, expirationDate);
+          return new TodoItem(
+            item.text,
+            item.creationDate,
+            item.expirationDate
+          );
         }),
       ];
     } else {
       this.#activeTodoItemsCountIncrement();
-      this.#todoItems.push(new TodoItem(data, creationDate, expirationDate));
+      this.#todoItems.push(
+        new TodoItem(data.text, data.creationDate, data.expirationDate)
+      );
     }
   }
 
@@ -396,11 +435,10 @@ export class TodoList extends Abstract {
     return todoItemsMarkup;
   };
 
-  #updateListOfItems = (itemStatus = 'all') => {
-    const ListElement = this.#container.querySelector('ul');
-
+  #updateListOfItems = (isReversed = false) => {
+    const { status, sorting } = this.#viewSetting;
     let itemsToShow;
-    switch (itemStatus) {
+    switch (status) {
       case filterByStatus.ALL:
         itemsToShow = [...this.#todoItems];
         break;
@@ -412,8 +450,26 @@ export class TodoList extends Abstract {
         break;
     }
 
-    console.log(itemsToShow);
-    ListElement.innerHTML = this.#getTodoItemsMarkup(itemsToShow);
+    switch (sorting) {
+      case sortingType.UNSORTED:
+        break;
+      case sortingType.BY_TEXT:
+        itemsToShow.sort((a, b) => (a.text > b.text ? 1 : -1));
+        break;
+      case sortingType.BY_CREATION_DATE:
+        itemsToShow.sort((a, b) => (a.creationDate > b.creationDate ? 1 : -1));
+        break;
+      case sortingType.BY_EXPIRATION_DATE:
+        itemsToShow.sort((a, b) =>
+          a.expirationDate > b.expirationDate ? 1 : -1
+        );
+        break;
+    }
+
+    if (isReversed) itemsToShow.reverse();
+
+    const listElement = this.#container.querySelector('ul');
+    listElement.innerHTML = this.#getTodoItemsMarkup(itemsToShow);
   };
 
   #statusFilterButtonClickHandler = (itemStatus) => {
@@ -429,8 +485,28 @@ export class TodoList extends Abstract {
             filterButton.classList.remove('btn-light');
           }
         });
-      this.#updateListOfItems(itemStatus);
+      this.#viewSetting.status = itemStatus;
+      this.#updateListOfItems();
     };
+  };
+
+  #toggleSortAndFilterPanelButtonClickHandler = () => {
+    const sortAndFilterPanelElement = this.#container.querySelector(
+      '#sort-and-filter-panel'
+    );
+    sortAndFilterPanelElement.classList.toggle('d-none');
+  };
+
+  #sortingTypeSelectClickHandler = (evt) => {
+    this.#viewSetting.sorting = evt.target.value;
+    const reverseSortingOrder = this.#container.querySelector(
+      '#reverse-sorting-order'
+    );
+    this.#updateListOfItems(reverseSortingOrder.checked);
+  };
+
+  #reverseSortingOrderClickHandler = (evt) => {
+    this.#updateListOfItems(evt.target.checked);
   };
 
   addItem(
@@ -448,7 +524,7 @@ export class TodoList extends Abstract {
 
     if (!text || typeof text !== 'string') return;
 
-    this.#addToList(text, creationDate, expirationDate);
+    this.#addToList({ text, creationDate, expirationDate });
     insertItemMarkup();
     this.#setDefaultNewItemValues();
   }
@@ -457,6 +533,10 @@ export class TodoList extends Abstract {
     this.#container.insertAdjacentHTML(
       position.BEFORE_END,
       getNewItemInputGroupMarkup()
+    );
+    this.#container.insertAdjacentHTML(
+      position.BEFORE_END,
+      getSortAndFilterPanelMarkup()
     );
     this.#container.insertAdjacentHTML(
       position.BEFORE_END,
@@ -522,7 +602,7 @@ export class TodoList extends Abstract {
       'change',
       this.#creationDateInputModalChangeHandler
     );
-    this.setBinding(newItem.CREATION_DATE, creationDateInputModal, formatDate);
+    this.setBinding(newItem.CREATION_DATE, creationDateInputModal);
 
     const expirationDateInputModal = this.#container.querySelector(
       '#expiration-date-input-modal'
@@ -531,14 +611,10 @@ export class TodoList extends Abstract {
       'change',
       this.#expirationDateInputModalChangeHandler
     );
-    this.setBinding(
-      newItem.EXPIRATION_DATE,
-      expirationDateInputModal,
-      formatDate
-    );
+    this.setBinding(newItem.EXPIRATION_DATE, expirationDateInputModal);
 
     const saveNewItemButtonModal = this.#container.querySelector(
-      '#save-new-item-button-modal'
+      '#create-new-item-button-modal'
     );
     saveNewItemButtonModal.addEventListener(
       'click',
@@ -585,5 +661,29 @@ export class TodoList extends Abstract {
 
       this.#container.querySelector('.status-filter-all-button').click();
     });
+
+    const toggleSortAndFilterPanelButton = this.#container.querySelector(
+      '.toggle-sort-and-filter-panel-button'
+    );
+    toggleSortAndFilterPanelButton.addEventListener(
+      'click',
+      this.#toggleSortAndFilterPanelButtonClickHandler
+    );
+
+    const sortingTypeSelect = this.#container.querySelector(
+      '#sorting-type-select'
+    );
+    sortingTypeSelect.addEventListener(
+      'change',
+      this.#sortingTypeSelectClickHandler
+    );
+
+    const reverseSortingOrder = this.#container.querySelector(
+      '#reverse-sorting-order'
+    );
+    reverseSortingOrder.addEventListener(
+      'change',
+      this.#reverseSortingOrderClickHandler
+    );
   }
 }
