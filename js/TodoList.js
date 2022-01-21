@@ -200,7 +200,7 @@ const getFilterBarMarkup = () => {
         >
           Completed
         </button>
-        <button type="button" class="btn btn-info">
+        <button type="button" class="btn btn-info clear-completed-button">
           Clear completed
         </button>
       </div>
@@ -576,5 +576,14 @@ export class TodoList extends Abstract {
       'click',
       this.#statusFilterButtonClickHandler(filterByStatus.COMPLETED)
     );
+
+    const clearCompletedButton = this.#container.querySelector(
+      '.clear-completed-button'
+    );
+    clearCompletedButton.addEventListener('click', () => {
+      this.#todoItems = this.#todoItems.filter((item) => !item.isDone);
+
+      this.#container.querySelector('.status-filter-all-button').click();
+    });
   }
 }
