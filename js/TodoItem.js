@@ -62,9 +62,9 @@ export class TodoItem extends Abstract {
       class="list-group-item list-group-item-warning d-flex justify-content-between align-items-center"
       data-id=${this.#id}
     >
-      <label class="${
-        this.#isDone ? 'text-decoration-line-through text-secondary' : ''
-      }">
+      <label ${
+        this.#isDone ? 'class="text-decoration-line-through text-secondary"' : ''
+      }>
         <input
           class="form-check-input me-1"
           type="checkbox"

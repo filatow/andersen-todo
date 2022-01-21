@@ -9,6 +9,12 @@ const newItem = {
   EXPIRATION_DATE: 'newItemExpirationDate',
 };
 
+const filterByStatus = {
+  ALL: 'all',
+  ACTIVE: 'active',
+  COMPLETED: 'completed',
+};
+
 const getNewItemInputGroupMarkup = () => {
   const newItemInputGroupMarkup = `
   <div class="input-group mb-3">
@@ -28,7 +34,7 @@ const getNewItemInputGroupMarkup = () => {
 };
 
 const getTodoListMarkup = (todoItemsMarkup = '') => {
-  const todoListMarkup = `<ul class="list-group">${todoItemsMarkup}</ul>`;
+  const todoListMarkup = `<ul class="list-group mb-3">${todoItemsMarkup}</ul>`;
 
   return todoListMarkup;
 };
@@ -163,6 +169,47 @@ const getEditItemModalMarkup = (itemCreationDate, itemExpirationDate) => {
   return editItemModalMarkup;
 };
 
+const getFilterBarMarkup = () => {
+  const filterBarMarkup = `
+    <div
+      id="filter-bar"
+      class="d-flex justify-content-between align-items-center"
+    >
+      <div class="d-inline-block">
+        <span class="badge bg-light text-dark">
+          <span class="active-items-count fs-6">10</span> items left
+        </span>
+      </div>
+      <div class="d-inline-block">
+        <button
+          type="button"
+          class="btn btn-light status-filter-button 
+          status-filter-all-button"
+        >
+          All
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-light status-filter-button status-filter-active-button"
+        >
+          Active
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-light status-filter-button status-filter-completed-button"
+        >
+          Completed
+        </button>
+        <button type="button" class="btn btn-info">
+          Clear completed
+        </button>
+      </div>
+    </div>
+  `;
+
+  return filterBarMarkup;
+};
+
 export class TodoList extends Abstract {
   #container;
   #todoItems = [];
@@ -177,7 +224,8 @@ export class TodoList extends Abstract {
       Date.parse(this.#defaultListItemCreationDate) + DAY_IN_MS
     );
     this.#setDefaultNewItemValues();
-    this.#addItemToList(items);
+    this.setState('activeTodoItemsCount', 0);
+    this.#addToList(items);
   }
 
   #setDefaultNewItemValues() {
@@ -198,6 +246,11 @@ export class TodoList extends Abstract {
     );
 
     itemToUpdate.isDone = !itemToUpdate.isDone;
+    if (itemToUpdate.isDone) {
+      this.#activeTodoItemsCountDecrement();
+    } else {
+      this.#activeTodoItemsCountIncrement();
+    }
     clickedItemElement.insertAdjacentHTML(
       position.AFTER_END,
       itemToUpdate.getMarkup()
@@ -217,7 +270,10 @@ export class TodoList extends Abstract {
     );
 
     itemElementToDelete.remove();
-    this.#todoItems.splice(itemToDeleteIndex, 1);
+    const [deletedItem] = this.#todoItems.splice(itemToDeleteIndex, 1);
+    if (!deletedItem.isDone) {
+      this.#activeTodoItemsCountDecrement();
+    }
   };
 
   #listItemEditButtonClickHandler = (evt) => {
@@ -299,9 +355,23 @@ export class TodoList extends Abstract {
       itemToUpdate.getMarkup()
     );
     elementToReplace.remove();
+  };
+
+  #activeTodoItemsCountIncrement() {
+    this.setState(
+      'activeTodoItemsCount',
+      this.getState('activeTodoItemsCount') + 1
+    );
   }
 
-  #addItemToList(
+  #activeTodoItemsCountDecrement() {
+    this.setState(
+      'activeTodoItemsCount',
+      this.getState('activeTodoItemsCount') - 1
+    );
+  }
+
+  #addToList(
     data,
     creationDate = this.#defaultListItemCreationDate,
     expirationDate = this.#defaultListItemExpirationDate
@@ -309,12 +379,59 @@ export class TodoList extends Abstract {
     if (Array.isArray(data)) {
       this.#todoItems = [
         ...this.#todoItems,
-        ...data.map((item) => new TodoItem(item, creationDate, expirationDate)),
+        ...data.map((item) => {
+          this.#activeTodoItemsCountIncrement();
+          return new TodoItem(item, creationDate, expirationDate);
+        }),
       ];
     } else {
+      this.#activeTodoItemsCountIncrement();
       this.#todoItems.push(new TodoItem(data, creationDate, expirationDate));
     }
   }
+
+  #getTodoItemsMarkup = (items) => {
+    const todoItemsMarkup = items.map((item) => item.getMarkup()).join('');
+
+    return todoItemsMarkup;
+  };
+
+  #updateListOfItems = (itemStatus = 'all') => {
+    const ListElement = this.#container.querySelector('ul');
+
+    let itemsToShow;
+    switch (itemStatus) {
+      case filterByStatus.ALL:
+        itemsToShow = [...this.#todoItems];
+        break;
+      case filterByStatus.ACTIVE:
+        itemsToShow = this.#todoItems.filter((item) => !item.isDone);
+        break;
+      case filterByStatus.COMPLETED:
+        itemsToShow = this.#todoItems.filter((item) => item.isDone);
+        break;
+    }
+
+    console.log(itemsToShow);
+    ListElement.innerHTML = this.#getTodoItemsMarkup(itemsToShow);
+  };
+
+  #statusFilterButtonClickHandler = (itemStatus) => {
+    return (evt) => {
+      this.#container
+        .querySelectorAll('.status-filter-button')
+        .forEach((filterButton) => {
+          if (filterButton === evt.target) {
+            filterButton.classList.add('btn-light');
+            filterButton.classList.remove('btn-outline-light');
+          } else {
+            filterButton.classList.add('btn-outline-light');
+            filterButton.classList.remove('btn-light');
+          }
+        });
+      this.#updateListOfItems(itemStatus);
+    };
+  };
 
   addItem(
     text = this.getState(newItem.TEXT),
@@ -331,23 +448,23 @@ export class TodoList extends Abstract {
 
     if (!text || typeof text !== 'string') return;
 
-    this.#addItemToList(text, creationDate, expirationDate);
+    this.#addToList(text, creationDate, expirationDate);
     insertItemMarkup();
     this.#setDefaultNewItemValues();
   }
 
   render() {
-    const todoItemsMarkup = this.#todoItems
-      .map((item) => item.getMarkup())
-      .join('');
-
     this.#container.insertAdjacentHTML(
       position.BEFORE_END,
       getNewItemInputGroupMarkup()
     );
     this.#container.insertAdjacentHTML(
       position.BEFORE_END,
-      getTodoListMarkup(todoItemsMarkup)
+      getTodoListMarkup(this.#getTodoItemsMarkup(this.#todoItems))
+    );
+    this.#container.insertAdjacentHTML(
+      position.BEFORE_END,
+      getFilterBarMarkup()
     );
     this.#container.insertAdjacentHTML(
       position.BEFORE_END,
@@ -387,6 +504,17 @@ export class TodoList extends Abstract {
       this.setBinding(newItem.TEXT, input);
     });
 
+    const activeItemsCountElement = this.#container.querySelector(
+      '.active-items-count'
+    );
+    activeItemsCountElement.textContent = this.getState('activeTodoItemsCount');
+    this.setBinding(
+      'activeTodoItemsCount',
+      activeItemsCountElement,
+      null,
+      'textContent'
+    );
+
     const creationDateInputModal = this.#container.querySelector(
       '#creation-date-input-modal'
     );
@@ -423,6 +551,30 @@ export class TodoList extends Abstract {
     saveEditedItemButtonModal.addEventListener(
       'click',
       this.#saveEditedItemButtonModalClickHandler
+    );
+
+    const statusFilterAllButton = this.#container.querySelector(
+      '.status-filter-all-button'
+    );
+    statusFilterAllButton.addEventListener(
+      'click',
+      this.#statusFilterButtonClickHandler(filterByStatus.ALL)
+    );
+
+    const statusFilterActiveButton = this.#container.querySelector(
+      '.status-filter-active-button'
+    );
+    statusFilterActiveButton.addEventListener(
+      'click',
+      this.#statusFilterButtonClickHandler(filterByStatus.ACTIVE)
+    );
+
+    const statusFilterCompletedButton = this.#container.querySelector(
+      '.status-filter-completed-button'
+    );
+    statusFilterCompletedButton.addEventListener(
+      'click',
+      this.#statusFilterButtonClickHandler(filterByStatus.COMPLETED)
     );
   }
 }

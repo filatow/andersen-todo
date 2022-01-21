@@ -7,8 +7,11 @@ export class Abstract {
     }
   }
   
-  get state() {
+  get state() { // temporary; for debug only
     return this.#state;
+  }
+  get binding() { // temporary; for debug only
+    return this.#binding;
   }
   
   getState(variable) {
@@ -26,7 +29,7 @@ export class Abstract {
     if (typeof property !== 'string') return;
 
     function updateElementValue(newValue) {
-      if (typeof format === 'function') {
+      if (typeof(format) === 'function') {
         bindedElement[property] = format(newValue);
       } else {
         bindedElement[property] = newValue;
@@ -41,7 +44,9 @@ export class Abstract {
   }
 
   updateBinding(variable) {
-    if (!this.#binding[variable]) return;
+    if (!this.#binding[variable]) {
+      return;
+    };
 
     this.#binding[variable].forEach((updateFunc) => {
       updateFunc(this.#state[variable]);
