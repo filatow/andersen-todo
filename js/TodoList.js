@@ -4,6 +4,7 @@ import {
   keyCode,
   DAY_IN_MS,
   newItem,
+  editItem,
   filterByStatus,
   sortingType,
 } from './consts';
@@ -113,6 +114,7 @@ const getNewItemCreateModalMarkup = (itemCreationDate, itemExpirationDate) => {
                 type="date"
                 class="form-control"
                 id="expiration-date-input-modal"
+                min="${itemCreationDate}"
                 value="${itemExpirationDate}"
               />
             </div>
@@ -193,6 +195,7 @@ const getEditItemModalMarkup = (itemCreationDate, itemExpirationDate) => {
           </button>
           <button
             type="button" class="btn btn-primary"
+            data-bs-dismiss="modal"
             id="save-edited-item-button-modal"
           >
             Save
@@ -317,15 +320,18 @@ export class TodoList extends Abstract {
     const button = evt.target.closest('button.edit-item');
     if (!button) return;
 
-    const itemElementToEdit = evt.target.closest('li');
-    if (!itemElementToEdit) return;
+    const itemToEditElement = evt.target.closest('li');
+    if (!itemToEditElement) return;
 
     const itemToEditIndex = this.#todoItems.findIndex(
-      (item) => item.id === itemElementToEdit.dataset.id
+      (item) => item.id === itemToEditElement.dataset.id
     );
 
-    this.setState('itemToEdit', this.#todoItems[itemToEditIndex]);
-    const itemToEdit = this.getState('itemToEdit');
+    const itemToEdit = this.#todoItems[itemToEditIndex];
+    this.setState(editItem.ID, itemToEdit.id);
+    this.setState(editItem.TEXT, itemToEdit.text);
+    this.setState(editItem.CREATION_DATE, itemToEdit.creationDate);
+    this.setState(editItem.EXPIRATION_DATE, itemToEdit.expirationDate);
     const editItemInputModal = this.#container.querySelector(
       '#edit-item-input-modal'
     );
@@ -338,7 +344,23 @@ export class TodoList extends Abstract {
 
     editItemInputModal.value = itemToEdit.text;
     editCreationDateInputModal.value = itemToEdit.creationDate;
+    editExpirationDateInputModal.min = itemToEdit.creationDate;
     editExpirationDateInputModal.value = itemToEdit.expirationDate;
+  };
+
+  #editCreationDateInputModalChangeHandler = (evt) => {
+    this.setState(editItem.CREATION_DATE, evt.target.value);
+
+    const currentCreationDate = this.getState(editItem.CREATION_DATE);
+    const currentExpirationDate = this.getState(editItem.EXPIRATION_DATE);
+    const editExpirationDateInputModal = this.#container.querySelector(
+      '#edit-expiration-date-input-modal'
+    );
+    editExpirationDateInputModal.min = currentCreationDate;
+
+    if (currentCreationDate >= currentExpirationDate) {
+      editExpirationDateInputModal.value = currentCreationDate;
+    }
   };
 
   #enterKeydownHandler = (evt) => {
@@ -358,6 +380,17 @@ export class TodoList extends Abstract {
 
   #creationDateInputModalChangeHandler = (evt) => {
     this.setState(newItem.CREATION_DATE, evt.target.value);
+
+    const currentCreationDate = this.getState(newItem.CREATION_DATE);
+    const currentExpirationDate = this.getState(newItem.EXPIRATION_DATE);
+    const expirationDateInputModal = this.#container.querySelector(
+      '#expiration-date-input-modal'
+    );
+    expirationDateInputModal.min = currentCreationDate;
+
+    if (currentCreationDate >= currentExpirationDate) {
+      this.setState(newItem.EXPIRATION_DATE, formatDate(evt.target.value));
+    }
   };
 
   #expirationDateInputModalChangeHandler = (evt) => {
@@ -369,7 +402,9 @@ export class TodoList extends Abstract {
   };
 
   #saveEditedItemButtonModalClickHandler = () => {
-    const itemToUpdate = this.getState('itemToEdit');
+    const itemToUpdate = this.#todoItems.find(
+      (item) => item.id === this.getState(editItem.ID)
+    );
     const editItemInputModal = this.#container.querySelector(
       '#edit-item-input-modal'
     );
@@ -583,6 +618,14 @@ export class TodoList extends Abstract {
       input.addEventListener('input', this.#newItemInputHandler);
       this.setBinding(newItem.TEXT, input);
     });
+
+    const editCreationDateInputModal = this.#container.querySelector(
+      '#edit-creation-date-input-modal'
+    );
+    editCreationDateInputModal.addEventListener(
+      'change',
+      this.#editCreationDateInputModalChangeHandler
+    );
 
     const activeItemsCountElement = this.#container.querySelector(
       '.active-items-count'

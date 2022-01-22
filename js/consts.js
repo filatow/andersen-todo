@@ -17,6 +17,13 @@ export const newItem = {
   EXPIRATION_DATE: 'newItemExpirationDate',
 };
 
+export const editItem = {
+  ID: 'editItemId',
+  TEXT: 'editItemText',
+  CREATION_DATE: 'editItemCreationDate',
+  EXPIRATION_DATE: 'editItemExpirationDate',
+};
+
 export const filterByStatus = {
   ALL: 'all',
   ACTIVE: 'active',
