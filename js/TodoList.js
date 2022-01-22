@@ -40,29 +40,76 @@ const getNewItemInputGroupMarkup = () => {
 const getSortAndFilterPanelMarkup = () => {
   const sortAndFilterPanelMarkup = `
   <div class="d-none" id="sort-and-filter-panel">
-    <div class="row row-cols-lg-auto g-3 align-items-center text-white mb-3">
+    <div
+      class="row row-cols-lg-auto g-3 align-items-center text-white mb-3"
+    >
       <div class="col">
-        Sort by
+        <span class="fs-6 fw-bold">Sort by</span>
       </div>
       <div class="col">
         <select class="form-select" id="sorting-type-select">
           <option value="unsorted" selected>Choose...</option>
           <option value="by-text">Text</option>
           <option value="by-creation-date">Creation date</option>
-          <option value="by-expiration-date">Expiration date</option>
+          <option value="by-expiration-date">
+            Expiration date
+          </option>
         </select>
       </div>
       <div class="col">
         <div class="form-check">
-          <label class="form-check-label" for="reverse-sorting-order">
+          <label
+            class="form-check-label"
+            for="reverse-sorting-order"
+          >
             <input
-            class="form-check-input"
-            type="checkbox"
-            id="reverse-sorting-order"
-          />
+              class="form-check-input"
+              type="checkbox"
+              id="reverse-sorting-order"
+            />
             reverse order
           </label>
         </div>
+      </div>
+    </div>
+    <div class="row mb-1 text-white">
+      <div class="col">
+        <span class="fs-6 fw-bold">Search by :</span>
+      </div>
+    </div>
+    <div class="row text-white">
+      <div class="col">
+        <label for="search-by-text-input" class="form-label"
+          >Text</label
+        >
+        <div class="input-group mb-3">
+          <input
+            type="text"
+            class="form-control"
+            id="search-by-text-input"
+            placeholder="Enter text..."
+          />
+        </div>
+      </div>
+      <div class="col">
+        <label for="search-by-creation-date-input" class="form-label"
+          >Creation date</label
+        >
+        <input
+          type="date"
+          class="form-control"
+          id="search-by-creation-date-input"
+        />
+      </div>
+      <div class="col">
+        <label for="search-by-expiration-date-input" class="form-label"
+          >Expiration date</label
+        >
+        <input
+          type="date"
+          class="form-control"
+          id="search-by-expiration-date-input"
+        />
       </div>
     </div>
   </div>`;
@@ -257,6 +304,10 @@ export class TodoList extends Abstract {
   #viewSetting = {
     status: filterByStatus.ALL,
     sorting: sortingType.UNSORTED,
+    searchByText: null,
+    searchByCreationDate: null,
+    searchByExpirationDate: null,
+    isReversed: false,
   };
 
   constructor(container, items = []) {
@@ -470,7 +521,7 @@ export class TodoList extends Abstract {
     return todoItemsMarkup;
   };
 
-  #updateListOfItems = (isReversed = false) => {
+  #updateListOfItems = () => {
     const { status, sorting } = this.#viewSetting;
     let itemsToShow;
     switch (status) {
@@ -501,7 +552,25 @@ export class TodoList extends Abstract {
         break;
     }
 
-    if (isReversed) itemsToShow.reverse();
+    if (this.#viewSetting.searchByText) {
+      itemsToShow = itemsToShow.filter((item) =>
+        item.text.includes(this.#viewSetting.searchByText)
+      );
+    }
+
+    if (this.#viewSetting.searchByCreationDate) {
+      itemsToShow = itemsToShow.filter((item) =>
+        item.creationDate === this.#viewSetting.searchByCreationDate
+      );
+    }
+
+    if (this.#viewSetting.searchByExpirationDate) {
+      itemsToShow = itemsToShow.filter((item) =>
+        item.expirationDate === this.#viewSetting.searchByExpirationDate
+      );
+    }
+
+    if (this.#viewSetting.isReversed) itemsToShow.reverse();
 
     const listElement = this.#container.querySelector('ul');
     listElement.innerHTML = this.#getTodoItemsMarkup(itemsToShow);
@@ -541,7 +610,23 @@ export class TodoList extends Abstract {
   };
 
   #reverseSortingOrderClickHandler = (evt) => {
-    this.#updateListOfItems(evt.target.checked);
+    this.#viewSetting.isReversed = evt.target.checked;
+    this.#updateListOfItems();
+  };
+
+  #searchByTextInputInputHandler = (evt) => {
+    this.#viewSetting.searchByText = evt.target.value;
+    this.#updateListOfItems();
+  };
+
+  #searchByCreationDateChangeHandler = (evt) => {
+    this.#viewSetting.searchByCreationDate = evt.target.value;
+    this.#updateListOfItems();
+  };
+
+  #searchByExpirationDateChangeHandler = (evt) => {
+    this.#viewSetting.searchByExpirationDate = evt.target.value;
+    this.#updateListOfItems();
   };
 
   addItem(
@@ -727,6 +812,30 @@ export class TodoList extends Abstract {
     reverseSortingOrder.addEventListener(
       'change',
       this.#reverseSortingOrderClickHandler
+    );
+
+    const searchByTextInput = this.#container.querySelector(
+      '#search-by-text-input'
+    );
+    searchByTextInput.addEventListener(
+      'input',
+      this.#searchByTextInputInputHandler
+    );
+
+    const searchByCreationDateInput = this.#container.querySelector(
+      '#search-by-creation-date-input'
+    );
+    searchByCreationDateInput.addEventListener(
+      'change',
+      this.#searchByCreationDateChangeHandler
+    );
+
+    const searchByExpirationDateInput = this.#container.querySelector(
+      '#search-by-expiration-date-input'
+    );
+    searchByExpirationDateInput.addEventListener(
+      'change',
+      this.#searchByExpirationDateChangeHandler
     );
   }
 }
